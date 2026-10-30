@@ -13395,336 +13395,260 @@ task.spawn(function()
 end)
 
 
+
 --[[
-    Infinite Yield FE 6.4.2 - 繁體中文視窗介面
-    僅新增介面層：不修改原有 addcmd / execCmd / FUNC 指令實作。
-    分類由指令名稱關鍵字推斷；指令識別名稱保持原樣以確保相容。
+    Infinite Yield FE 6.4.2 - 繁體中文視窗介面（安全精簡版）
+    視窗：500 x 350；左側分類、右側功能按鈕、參數輸入、最小化／還原。
+    為避免提供未授權遊戲操作的快捷執行面板，此介面只開放下列
+    本機介面、鏡頭及資訊查詢功能，不提供遠端呼叫、玩家干擾、
+    隱藏／Hook、反作弊繞過或其他具侵入性的指令快捷操作。
 ]]
 
 task.spawn(function()
-    -- 等待原始指令註冊完成
     for _ = 1, 100 do
-        if type(cmds) == "table" and #cmds > 0 and type(execCmd) == "function" then
-            break
-        end
+        if type(execCmd) == "function" and type(cmds) == "table" then break end
         task.wait(0.1)
     end
-    if type(cmds) ~= "table" or type(execCmd) ~= "function" then
-        warn("[IY 繁中介面] 無法取得原始指令列表。")
+    if type(execCmd) ~= "function" then
+        warn("[IY 繁體中文介面] 找不到原始指令執行器。")
         return
     end
 
-    -- 隱藏舊版小型指令視窗，保留其底層功能與設定資料
     pcall(function()
         if Holder then Holder.Visible = false end
     end)
 
+    local uiParent = PARENT or PlayerGui
     local player = Players.LocalPlayer
-    local parentGui = PARENT or PlayerGui
+    local old = uiParent:FindFirstChild("IY_TraditionalChinese_Window")
+    if old then old:Destroy() end
+
     local gui = Instance.new("ScreenGui")
     gui.Name = "IY_TraditionalChinese_Window"
     gui.ResetOnSpawn = false
     gui.DisplayOrder = 1000000
     gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-    gui.Parent = parentGui
+    gui.Parent = uiParent
 
-    local function corner(obj, radius)
-        local c = Instance.new("UICorner")
-        c.CornerRadius = UDim.new(0, radius or 8)
-        c.Parent = obj
+    local function make(className, props, parent)
+        local obj = Instance.new(className)
+        for k, v in pairs(props or {}) do obj[k] = v end
+        obj.Parent = parent
+        return obj
     end
-
-    local function stroke(obj, color, transparency)
-        local s = Instance.new("UIStroke")
-        s.Color = color or Color3.fromRGB(65, 70, 86)
-        s.Transparency = transparency or 0.25
-        s.Thickness = 1
-        s.Parent = obj
+    local function round(obj, px)
+        make("UICorner", {CornerRadius = UDim.new(0, px or 7)}, obj)
     end
-
-    local function label(parent, text, size, pos, fontSize, color)
-        local l = Instance.new("TextLabel")
-        l.BackgroundTransparency = 1
-        l.Size = size
-        l.Position = pos
-        l.Font = Enum.Font.Gotham
-        l.Text = text
-        l.TextSize = fontSize or 14
-        l.TextColor3 = color or Color3.fromRGB(235, 238, 245)
-        l.TextXAlignment = Enum.TextXAlignment.Left
-        l.TextYAlignment = Enum.TextYAlignment.Center
-        l.Parent = parent
-        return l
+    local function txt(parent, value, size, pos, fontSize, color, align)
+        return make("TextLabel", {
+            BackgroundTransparency = 1, Text = value, Size = size, Position = pos,
+            Font = Enum.Font.Gotham, TextSize = fontSize or 13,
+            TextColor3 = color or Color3.fromRGB(235,238,245),
+            TextXAlignment = align or Enum.TextXAlignment.Left,
+            TextYAlignment = Enum.TextYAlignment.Center
+        }, parent)
     end
-
-    local function button(parent, text, size, pos, bg)
-        local b = Instance.new("TextButton")
-        b.Size = size
-        b.Position = pos
-        b.BackgroundColor3 = bg or Color3.fromRGB(43, 48, 63)
-        b.BorderSizePixel = 0
-        b.AutoButtonColor = true
-        b.Font = Enum.Font.GothamMedium
-        b.Text = text
-        b.TextSize = 13
-        b.TextColor3 = Color3.fromRGB(235, 238, 245)
-        b.Parent = parent
-        corner(b, 7)
+    local function btn(parent, value, size, pos, color)
+        local b = make("TextButton", {
+            Text = value, Size = size, Position = pos,
+            BackgroundColor3 = color or Color3.fromRGB(43,49,64),
+            BorderSizePixel = 0, AutoButtonColor = true,
+            Font = Enum.Font.GothamMedium, TextSize = 12,
+            TextColor3 = Color3.fromRGB(238,240,246)
+        }, parent)
+        round(b, 6)
         return b
     end
 
-    local window = Instance.new("Frame")
-    window.Name = "主視窗"
-    window.AnchorPoint = Vector2.new(0.5, 0.5)
-    window.Position = UDim2.new(0.5, 0, 0.5, 0)
-    window.Size = UDim2.new(0, 720, 0, 460)
-    window.BackgroundColor3 = Color3.fromRGB(24, 27, 36)
-    window.BorderSizePixel = 0
-    window.Parent = gui
-    corner(window, 12)
-    stroke(window, Color3.fromRGB(78, 88, 112), 0.15)
+    local window = make("Frame", {
+        Name = "主視窗", AnchorPoint = Vector2.new(0.5,0.5),
+        Position = UDim2.fromScale(0.5,0.5), Size = UDim2.fromOffset(500,350),
+        BackgroundColor3 = Color3.fromRGB(23,27,36), BorderSizePixel = 0,
+        Active = true
+    }, gui)
+    round(window, 10)
+    make("UIStroke", {Color = Color3.fromRGB(66,76,99), Transparency = 0.2}, window)
 
-    local top = Instance.new("Frame")
-    top.Size = UDim2.new(1, 0, 0, 48)
-    top.BackgroundColor3 = Color3.fromRGB(31, 35, 47)
-    top.BorderSizePixel = 0
-    top.Parent = window
-    corner(top, 12)
-    label(top, "INFINITE YIELD  |  繁體中文版", UDim2.new(1, -110, 1, 0), UDim2.new(0, 16, 0, 0), 16)
+    local top = make("Frame", {
+        Size = UDim2.new(1,0,0,36), BackgroundColor3 = Color3.fromRGB(31,36,48),
+        BorderSizePixel = 0
+    }, window)
+    round(top, 10)
+    txt(top, "INFINITE YIELD｜繁體中文版", UDim2.new(1,-86,1,0), UDim2.fromOffset(12,0), 14)
+    local minimize = btn(top, "－", UDim2.fromOffset(30,25), UDim2.new(1,-38,0,5), Color3.fromRGB(63,78,112))
+    minimize.TextSize = 16
 
-    local close = button(top, "×", UDim2.new(0, 34, 0, 30), UDim2.new(1, -44, 0, 9), Color3.fromRGB(145, 55, 65))
-    close.TextSize = 20
-    close.MouseButton1Click:Connect(function() gui:Destroy() end)
-
-    -- 可拖曳標題列
-    local dragging, dragStart, startPos
+    -- 拖曳視窗
+    local dragging, dragInput, dragStart, startPos
     top.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = true
-            dragStart = input.Position
-            startPos = window.Position
+            dragging, dragStart, startPos = true, input.Position, window.Position
             input.Changed:Connect(function()
                 if input.UserInputState == Enum.UserInputState.End then dragging = false end
             end)
         end
     end)
+    top.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then dragInput = input end
+    end)
     UserInputService.InputChanged:Connect(function(input)
-        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        if dragging and input == dragInput then
             local delta = input.Position - dragStart
-            window.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+            window.Position = UDim2.new(startPos.X.Scale,startPos.X.Offset+delta.X,startPos.Y.Scale,startPos.Y.Offset+delta.Y)
         end
     end)
 
-    local sidebar = Instance.new("Frame")
-    sidebar.Position = UDim2.new(0, 12, 0, 60)
-    sidebar.Size = UDim2.new(0, 166, 1, -72)
-    sidebar.BackgroundColor3 = Color3.fromRGB(30, 34, 45)
-    sidebar.BorderSizePixel = 0
-    sidebar.Parent = window
-    corner(sidebar, 9)
-    label(sidebar, "功能類別", UDim2.new(1, -20, 0, 28), UDim2.new(0, 10, 0, 7), 14, Color3.fromRGB(160, 174, 205))
+    local sidebar = make("Frame", {
+        Position = UDim2.fromOffset(9,45), Size = UDim2.new(0,126,1,-54),
+        BackgroundColor3 = Color3.fromRGB(30,35,47), BorderSizePixel = 0
+    }, window)
+    round(sidebar, 7)
+    txt(sidebar,"功能分類",UDim2.new(1,-14,0,24),UDim2.fromOffset(7,4),12,Color3.fromRGB(163,177,205))
+    local categoryArea = make("Frame", {
+        Position = UDim2.fromOffset(6,31), Size = UDim2.new(1,-12,1,-37),
+        BackgroundTransparency = 1
+    }, sidebar)
+    local catLayout = make("UIListLayout", {Padding=UDim.new(0,5),SortOrder=Enum.SortOrder.LayoutOrder}, categoryArea)
 
-    local categoryList = Instance.new("ScrollingFrame")
-    categoryList.Position = UDim2.new(0, 7, 0, 40)
-    categoryList.Size = UDim2.new(1, -14, 1, -48)
-    categoryList.BackgroundTransparency = 1
-    categoryList.BorderSizePixel = 0
-    categoryList.ScrollBarThickness = 4
-    categoryList.CanvasSize = UDim2.new()
-    categoryList.Parent = sidebar
-    local catLayout = Instance.new("UIListLayout")
-    catLayout.Padding = UDim.new(0, 5)
-    catLayout.Parent = categoryList
+    local main = make("Frame", {
+        Position = UDim2.fromOffset(144,45), Size = UDim2.new(1,-153,1,-54),
+        BackgroundTransparency = 1
+    }, window)
+    local title = txt(main,"全部功能",UDim2.new(1,0,0,23),UDim2.new(),14)
+    local search = make("TextBox", {
+        Position=UDim2.fromOffset(0,27), Size=UDim2.new(1,0,0,29),
+        BackgroundColor3=Color3.fromRGB(37,43,57), BorderSizePixel=0,
+        Font=Enum.Font.Gotham, TextSize=12, TextColor3=Color3.fromRGB(240,242,247),
+        PlaceholderColor3=Color3.fromRGB(143,151,169), PlaceholderText="搜尋功能…",
+        Text="", ClearTextOnFocus=false
+    }, main)
+    round(search,6)
 
-    local content = Instance.new("Frame")
-    content.Position = UDim2.new(0, 190, 0, 60)
-    content.Size = UDim2.new(1, -202, 1, -72)
-    content.BackgroundTransparency = 1
-    content.Parent = window
+    local list = make("ScrollingFrame", {
+        Position=UDim2.fromOffset(0,63), Size=UDim2.new(1,0,1,-127),
+        BackgroundColor3=Color3.fromRGB(29,34,45), BorderSizePixel=0,
+        ScrollBarThickness=4, CanvasSize=UDim2.new()
+    }, main)
+    round(list,7)
+    local listLayout = make("UIListLayout", {Padding=UDim.new(0,4),SortOrder=Enum.SortOrder.LayoutOrder}, list)
+    make("UIPadding", {PaddingTop=UDim.new(0,6),PaddingBottom=UDim.new(0,6),PaddingLeft=UDim.new(0,6),PaddingRight=UDim.new(0,6)}, list)
 
-    local heading = label(content, "功能列表", UDim2.new(1, 0, 0, 26), UDim2.new(), 16)
-    local search = Instance.new("TextBox")
-    search.Position = UDim2.new(0, 0, 0, 32)
-    search.Size = UDim2.new(1, 0, 0, 34)
-    search.BackgroundColor3 = Color3.fromRGB(35, 40, 53)
-    search.BorderSizePixel = 0
-    search.Font = Enum.Font.Gotham
-    search.PlaceholderText = "搜尋功能名稱..."
-    search.Text = ""
-    search.TextSize = 13
-    search.TextColor3 = Color3.fromRGB(240, 242, 248)
-    search.PlaceholderColor3 = Color3.fromRGB(135, 143, 161)
-    search.ClearTextOnFocus = false
-    search.Parent = content
-    corner(search, 7)
+    local selected = txt(main,"選取功能後即可操作",UDim2.new(1,0,0,17),UDim.new(0,0,1,-59),10,Color3.fromRGB(166,178,202))
+    local inputBox = make("TextBox", {
+        Position=UDim2.new(0,0,1,-37), Size=UDim2.new(1,-88,0,32),
+        BackgroundColor3=Color3.fromRGB(37,43,57), BorderSizePixel=0,
+        Font=Enum.Font.Gotham, TextSize=12, TextColor3=Color3.fromRGB(240,242,247),
+        PlaceholderColor3=Color3.fromRGB(143,151,169), PlaceholderText="輸入所需數值…",
+        Text="", ClearTextOnFocus=false
+    }, main)
+    round(inputBox,6)
+    local run = btn(main,"執行",UDim2.new(0,80,0,32),UDim2.new(1,-80,1,-37),Color3.fromRGB(65,96,157))
 
-    local commandList = Instance.new("ScrollingFrame")
-    commandList.Position = UDim2.new(0, 0, 0, 76)
-    commandList.Size = UDim2.new(1, 0, 1, -164)
-    commandList.BackgroundColor3 = Color3.fromRGB(29, 33, 44)
-    commandList.BorderSizePixel = 0
-    commandList.ScrollBarThickness = 5
-    commandList.CanvasSize = UDim2.new()
-    commandList.Parent = content
-    corner(commandList, 8)
-    local cmdLayout = Instance.new("UIListLayout")
-    cmdLayout.Padding = UDim.new(0, 5)
-    cmdLayout.Parent = commandList
-    local cmdPadding = Instance.new("UIPadding")
-    cmdPadding.PaddingTop = UDim.new(0, 7)
-    cmdPadding.PaddingBottom = UDim.new(0, 7)
-    cmdPadding.PaddingLeft = UDim.new(0, 7)
-    cmdPadding.PaddingRight = UDim.new(0, 7)
-    cmdPadding.Parent = commandList
-
-    local selectedLabel = label(content, "目前選取：尚未選擇", UDim2.new(1, 0, 0, 20), UDim2.new(0, 0, 1, -82), 12, Color3.fromRGB(165, 179, 207))
-    local argsBox = Instance.new("TextBox")
-    argsBox.Position = UDim2.new(0, 0, 1, -57)
-    argsBox.Size = UDim2.new(1, -112, 0, 34)
-    argsBox.BackgroundColor3 = Color3.fromRGB(35, 40, 53)
-    argsBox.BorderSizePixel = 0
-    argsBox.Font = Enum.Font.Gotham
-    argsBox.PlaceholderText = "輸入參數（如玩家名稱、數值；沒有參數可留空）"
-    argsBox.Text = ""
-    argsBox.TextSize = 12
-    argsBox.TextColor3 = Color3.fromRGB(240, 242, 248)
-    argsBox.PlaceholderColor3 = Color3.fromRGB(135, 143, 161)
-    argsBox.ClearTextOnFocus = false
-    argsBox.Parent = content
-    corner(argsBox, 7)
-
-    local runButton = button(content, "執行", UDim2.new(0, 102, 0, 34), UDim2.new(1, -102, 1, -57), Color3.fromRGB(72, 105, 174))
-    local hint = label(content, "提示：指令名稱保持原樣；參數請依該功能需求輸入。", UDim2.new(1, 0, 0, 16), UDim2.new(0, 0, 1, -19), 10, Color3.fromRGB(125, 135, 157))
-
-    local categories = {
-        "全部功能", "玩家管理", "角色功能", "移動功能",
-        "視覺功能", "工具與物品", "伺服器功能", "其他功能"
+    local definitions = {
+        {category="介面與工具",name="開啟 Roblox 主控台",cmd="console"},
+        {category="介面與工具",name="開啟舊版主控台",cmd="oldconsole"},
+        {category="資訊查詢",name="查看伺服器資訊",cmd="serverinfo"},
+        {category="資訊查詢",name="複製伺服器識別碼",cmd="jobid"},
+        {category="資訊查詢",name="通知伺服器識別碼",cmd="notifyjobid"},
+        {category="資訊查詢",name="查看創作者識別碼",cmd="creatorid"},
+        {category="資訊查詢",name="複製創作者識別碼",cmd="copycreatorid"},
+        {category="鏡頭設定",name="切換第一人稱",cmd="firstp"},
+        {category="鏡頭設定",name="切換第三人稱",cmd="thirdp"},
+        {category="鏡頭設定",name="設定最大鏡頭距離",cmd="maxzoom",placeholder="輸入最大距離數值",param=true},
+        {category="鏡頭設定",name="設定最小鏡頭距離",cmd="minzoom",placeholder="輸入最小距離數值",param=true},
+        {category="鏡頭設定",name="設定鏡頭距離",cmd="camdistance",placeholder="輸入鏡頭距離數值",param=true},
+        {category="介面與工具",name="調整介面縮放比例",cmd="guiscale",placeholder="輸入 0.4 至 2 之間數值",param=true}
     }
-    local function getCategory(name)
-        local n = string.lower(name or "")
-        if string.find(n, "player") or string.find(n, "players") or string.find(n, "team") or string.find(n, "friend") or string.find(n, "follow") or string.find(n, "target") then
-            return "玩家管理"
-        elseif string.find(n, "fly") or string.find(n, "speed") or string.find(n, "jump") or string.find(n, "hip") or string.find(n, "sit") or string.find(n, "animation") or string.find(n, "character") or string.find(n, "health") or string.find(n, "respawn") or string.find(n, "morph") then
-            return "角色功能"
-        elseif string.find(n, "tp") or string.find(n, "teleport") or string.find(n, "walk") or string.find(n, "noclip") or string.find(n, "clip") or string.find(n, "goto") or string.find(n, "bring") or string.find(n, "orbit") or string.find(n, "spin") then
-            return "移動功能"
-        elseif string.find(n, "esp") or string.find(n, "view") or string.find(n, "camera") or string.find(n, "fov") or string.find(n, "bright") or string.find(n, "fullbright") or string.find(n, "zoom") or string.find(n, "visual") then
-            return "視覺功能"
-        elseif string.find(n, "tool") or string.find(n, "sword") or string.find(n, "gear") or string.find(n, "inventory") or string.find(n, "backpack") then
-            return "工具與物品"
-        elseif string.find(n, "server") or string.find(n, "rejoin") or string.find(n, "join") or string.find(n, "game") or string.find(n, "place") or string.find(n, "job") then
-            return "伺服器功能"
-        end
-        return "其他功能"
-    end
-
+    local categories = {"全部功能","介面與工具","資訊查詢","鏡頭設定"}
     local activeCategory = "全部功能"
-    local selectedCommand = nil
+    local activeDefinition = nil
     local categoryButtons = {}
-    local commandButtons = {}
 
-    local function clearCommands()
-        for _, child in ipairs(commandList:GetChildren()) do
+    local function clearList()
+        for _, child in ipairs(list:GetChildren()) do
             if child:IsA("TextButton") then child:Destroy() end
         end
-        commandButtons = {}
     end
-
-    local function refreshCommands()
-        clearCommands()
-        local query = string.lower(search.Text or "")
-        for _, command in ipairs(cmds) do
-            local name = tostring(command.NAME or "")
-            if name ~= "" then
-                local category = getCategory(name)
-                local matchesCategory = activeCategory == "全部功能" or activeCategory == category
-                local matchesSearch = query == "" or string.find(string.lower(name), query, 1, true) ~= nil
-                if matchesCategory and matchesSearch then
-                    local b = button(commandList, name, UDim2.new(1, -2, 0, 31), UDim2.new(), Color3.fromRGB(42, 48, 64))
-                    b.TextXAlignment = Enum.TextXAlignment.Left
-                    b.TextTruncate = Enum.TextTruncate.AtEnd
-                    b.MouseButton1Click:Connect(function()
-                        selectedCommand = name
-                        selectedLabel.Text = "目前選取：" .. name
-                        argsBox:CaptureFocus()
-                    end)
-                    table.insert(commandButtons, b)
-                end
+    local function render()
+        clearList()
+        local q = string.lower(search.Text or "")
+        for _, def in ipairs(definitions) do
+            local catOK = activeCategory == "全部功能" or activeCategory == def.category
+            local queryOK = q == "" or string.find(string.lower(def.name),q,1,true) ~= nil
+            if catOK and queryOK then
+                local b = btn(list,def.name,UDim2.new(1,0,0,29),UDim2.new(),Color3.fromRGB(43,50,66))
+                b.TextXAlignment = Enum.TextXAlignment.Left
+                b.Text = "  " .. def.name
+                b.MouseButton1Click:Connect(function()
+                    activeDefinition = def
+                    selected.Text = "已選取：「" .. def.name .. "」"
+                    inputBox.Text = ""
+                    inputBox.Visible = def.param == true
+                    run.Visible = def.param == true
+                    if def.param then
+                        inputBox.PlaceholderText = def.placeholder or "請輸入數值"
+                        inputBox:CaptureFocus()
+                    else
+                        -- 無參數功能按下功能按鈕即直接執行；僅限本介面白名單。
+                        local ok, err = pcall(function() execCmd(def.cmd,player,true) end)
+                        selected.Text = ok and ("已執行：「"..def.name.."」") or ("執行失敗："..tostring(err))
+                    end
+                end)
             end
         end
-        task.defer(function()
-            commandList.CanvasSize = UDim2.new(0, 0, 0, cmdLayout.AbsoluteContentSize.Y + 16)
-        end)
+        task.defer(function() list.CanvasSize = UDim2.new(0,0,0,listLayout.AbsoluteContentSize.Y+12) end)
     end
 
-    for _, category in ipairs(categories) do
-        local b = button(categoryList, category, UDim2.new(1, 0, 0, 34), UDim2.new(), Color3.fromRGB(42, 48, 64))
+    for i, category in ipairs(categories) do
+        local b = btn(categoryArea,category,UDim2.new(1,0,0,31),UDim2.new(),Color3.fromRGB(43,50,66))
+        b.LayoutOrder = i
+        categoryButtons[category] = b
         b.MouseButton1Click:Connect(function()
             activeCategory = category
-            heading.Text = category
-            for name, item in pairs(categoryButtons) do
-                item.BackgroundColor3 = name == category and Color3.fromRGB(65, 91, 145) or Color3.fromRGB(42, 48, 64)
+            title.Text = category
+            for name, button in pairs(categoryButtons) do
+                button.BackgroundColor3 = name == category and Color3.fromRGB(65,91,145) or Color3.fromRGB(43,50,66)
             end
-            refreshCommands()
+            render()
         end)
-        categoryButtons[category] = b
     end
-    categoryButtons["全部功能"].BackgroundColor3 = Color3.fromRGB(65, 91, 145)
+    categoryButtons["全部功能"].BackgroundColor3 = Color3.fromRGB(65,91,145)
 
-    search:GetPropertyChangedSignal("Text"):Connect(refreshCommands)
-    cmdLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-        commandList.CanvasSize = UDim2.new(0, 0, 0, cmdLayout.AbsoluteContentSize.Y + 16)
-    end)
-
-    runButton.MouseButton1Click:Connect(function()
-        if not selectedCommand or selectedCommand == "" then
-            selectedLabel.Text = "請先從右側選擇一項功能。"
+    inputBox.Visible = false
+    run.Visible = false
+    run.MouseButton1Click:Connect(function()
+        if not activeDefinition or not activeDefinition.param then return end
+        local value = string.match(inputBox.Text,"^%s*(.-)%s*$")
+        local number = tonumber(value)
+        if not number then
+            selected.Text = "請輸入有效數值。"
             return
         end
-        local fullCommand = selectedCommand
-        if argsBox.Text and argsBox.Text ~= "" then
-            fullCommand = fullCommand .. " " .. argsBox.Text
+        if activeDefinition.cmd == "guiscale" and (number < 0.4 or number > 2) then
+            selected.Text = "介面縮放比例必須介於 0.4 至 2。"
+            return
         end
-        -- 沿用原始指令執行器，不改寫原有功能。
-        execCmd(fullCommand, player, true)
-        selectedLabel.Text = "已提交：" .. selectedCommand
+        if number < 0 then
+            selected.Text = "數值不可小於 0。"
+            return
+        end
+        local ok, err = pcall(function() execCmd(activeDefinition.cmd .. " " .. tostring(number),player,true) end)
+        selected.Text = ok and ("已執行：「"..activeDefinition.name.."」") or ("執行失敗："..tostring(err))
     end)
-
-    refreshCommands()
-    categoryList.CanvasSize = UDim2.new(0, 0, 0, catLayout.AbsoluteContentSize.Y + 8)
-
-    -- 右上角以外的快速顯示按鈕，避免視窗關閉後無法重新開啟
-    local reopen = button(gui, "開啟 Infinite Yield", UDim2.new(0, 150, 0, 34), UDim2.new(0, 12, 0, 12), Color3.fromRGB(49, 76, 125))
-    reopen.Visible = false
-    close.MouseButton1Click:Connect(function()
-        reopen.Visible = true
+    search:GetPropertyChangedSignal("Text"):Connect(render)
+    listLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+        list.CanvasSize = UDim2.new(0,0,0,listLayout.AbsoluteContentSize.Y+12)
     end)
-    reopen.MouseButton1Click:Connect(function()
-        gui.Enabled = true
-        window.Visible = true
-        reopen.Visible = false
-    end)
+    render()
 
-    -- 改為最小化而非銷毀，保留可重新開啟能力
-    close.MouseButton1Click:Disconnect()
-    close.MouseButton1Click:Connect(function()
+    local restore = btn(gui,"還原 Infinite Yield",UDim2.fromOffset(148,32),UDim2.new(0,12,0,12),Color3.fromRGB(55,82,135))
+    restore.Visible = false
+    minimize.MouseButton1Click:Connect(function()
         window.Visible = false
-        reopen.Visible = true
+        restore.Visible = true
     end)
-
-    -- 視窗縮放：手機上限制在可視範圍內
-    local camera = workspace.CurrentCamera
-    if camera then
-        local function fitWindow()
-            local v = camera.ViewportSize
-            if v.X < 760 or v.Y < 500 then
-                window.Size = UDim2.new(1, -20, 1, -80)
-                window.Position = UDim2.new(0.5, 0, 0.5, 0)
-            else
-                window.Size = UDim2.new(0, 720, 0, 460)
-            end
-        end
-        fitWindow()
-        camera:GetPropertyChangedSignal("ViewportSize"):Connect(fitWindow)
-    end
+    restore.MouseButton1Click:Connect(function()
+        window.Visible = true
+        restore.Visible = false
+    end)
 end)
