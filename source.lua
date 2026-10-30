@@ -59,7 +59,7 @@ task.spawn(function()
     title.TextSize = 13
     title.TextColor3 = Color3.new(1, 1, 1)
     title.TextXAlignment = Enum.TextXAlignment.Left
-    title.Text = "Infinite Yield 繁體中文版 v" .. (currentVersion or "6.4.2")
+    title.Text = "Infinite Yield Reborn v" .. (currentVersion or "6.4.2")
     title.Parent = titleBar
 
     local showOrigBtn = Instance.new("TextButton")
@@ -109,18 +109,19 @@ task.spawn(function()
 
     -- ===== 懸浮切換按鈕（右下角，可拖動） =====
     local floatBtn = Instance.new("TextButton")
-    floatBtn.Name = "IY_ToggleBtn"
+    floatBtn.Name = "IYR_ToggleBtn"
     floatBtn.Size = UDim2.fromOffset(46, 46)
     floatBtn.Position = UDim2.new(1, -62, 1, -112)
     floatBtn.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
     floatBtn.BackgroundTransparency = 0.15
     floatBtn.BorderSizePixel = 0
     floatBtn.Font = Enum.Font.SourceSansBold
-    floatBtn.TextSize = 16
+    floatBtn.TextSize = 18
     floatBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    floatBtn.Text = "中"
+    floatBtn.Text = "IYR"
     floatBtn.AutoButtonColor = true
     floatBtn.ZIndex = 20
+    floatBtn.TextStrokeTransparency = 0
     floatBtn.Parent = screen
 
     local floatCorner = Instance.new("UICorner")
