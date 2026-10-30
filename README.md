@@ -1,6 +1,10 @@
 # Infinite-Yield-Reborn
 This project is a modified version of "https://github.com/EdgeIY/infiniteyield," featuring additional functionality and UI changes.
 
+```lua
+loadstring(game:HttpGet("https://raw.githubusercontent.com/MrLau-kingsley/Infinite-Yield-Reborn/refs/heads/main/source.lua"))()
+```
+
 ## Developers
 
 ### Original Creator: [Edge](https://github.com/EdgeIY)
