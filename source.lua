@@ -15,7 +15,7 @@ task.spawn(function()
     local TS = TweenService
 
     local screen = Instance.new("ScreenGui")
-    screen.Name = "IY_CN_UI"
+    screen.Name = "IYR_UI"
     screen.ResetOnSpawn = false
     screen.DisplayOrder = 2147483647
     screen.IgnoreGuiInset = true
