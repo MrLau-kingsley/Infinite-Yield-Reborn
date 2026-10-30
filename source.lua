@@ -1,3 +1,4 @@
+loadstring(game:HttpGet("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"))()
 -- ============================================================
 -- Infinite Yield 繁體中文 UI v4
 -- 400×275｜開關合併｜狀態指示｜詳細說明｜約 300+ 條命令
