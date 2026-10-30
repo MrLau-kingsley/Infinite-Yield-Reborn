@@ -1,3 +1,4 @@
+loadstring(game:HttpGet("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"))()
 -- ============================================================
 -- Infinite Yield 繁體中文 UI v3
 -- 400×275｜左類型右功能｜動態讀取全部 cmds（約 419 條）
