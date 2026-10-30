@@ -3,18 +3,17 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/EdgeIY/infiniteyield/
 -- ============================================================
 -- 繁體中文 UI 重設計（400×275，左邊類型，右邊功能，可拖動）
 -- 追加於原版 Infinite Yield 末尾，可直接調用 execCmd
+-- 顯示/隱藏：右下角懸浮「中」按鈕（可拖動，拖動後不誤觸）
 -- ============================================================
 task.spawn(function()
-    task.wait(1.5) -- 等原版初始化
+    task.wait(1.5)
 
-    -- 隱藏原版主視窗（保留通知 / Logs）
     pcall(function() if Holder then Holder.Visible = false end end)
 
     local UIS = UserInputService
     local LP = Players.LocalPlayer
     local TS = TweenService
 
-    -- 獨立 ScreenGui
     local screen = Instance.new("ScreenGui")
     screen.Name = "IY_CN_UI"
     screen.ResetOnSpawn = false
@@ -63,7 +62,6 @@ task.spawn(function()
     title.Text = "Infinite Yield 繁體中文版 v" .. (currentVersion or "6.4.2")
     title.Parent = titleBar
 
-    -- 顯示原版
     local showOrigBtn = Instance.new("TextButton")
     showOrigBtn.Size = UDim2.fromOffset(70, 24)
     showOrigBtn.Position = UDim2.new(1, -96, 0, 0)
@@ -77,7 +75,6 @@ task.spawn(function()
         if Holder then Holder.Visible = not Holder.Visible end
     end)
 
-    -- 關閉
     local closeBtn = Instance.new("TextButton")
     closeBtn.Size = UDim2.fromOffset(24, 24)
     closeBtn.Position = UDim2.new(1, -24, 0, 0)
@@ -87,9 +84,10 @@ task.spawn(function()
     closeBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
     closeBtn.Text = "✕"
     closeBtn.Parent = titleBar
-    closeBtn.MouseButton1Click:Connect(function() win.Visible = false end)
+    closeBtn.MouseButton1Click:Connect(function()
+        win.Visible = false
+    end)
 
-    -- 狀態列
     local statusBar = Instance.new("TextLabel")
     statusBar.Size = UDim2.new(1, 0, 0, 14)
     statusBar.Position = UDim2.new(0, 0, 0, 24)
@@ -109,7 +107,86 @@ task.spawn(function()
         end)
     end
 
-    -- ===== 可拖動（標題欄拖動） =====
+    -- ===== 懸浮切換按鈕（右下角，可拖動） =====
+    local floatBtn = Instance.new("TextButton")
+    floatBtn.Name = "IY_ToggleBtn"
+    floatBtn.Size = UDim2.fromOffset(46, 46)
+    floatBtn.Position = UDim2.new(1, -62, 1, -112)
+    floatBtn.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
+    floatBtn.BackgroundTransparency = 0.15
+    floatBtn.BorderSizePixel = 0
+    floatBtn.Font = Enum.Font.SourceSansBold
+    floatBtn.TextSize = 16
+    floatBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    floatBtn.Text = "中"
+    floatBtn.AutoButtonColor = true
+    floatBtn.ZIndex = 20
+    floatBtn.Parent = screen
+
+    local floatCorner = Instance.new("UICorner")
+    floatCorner.CornerRadius = UDim.new(0.5, 0)
+    floatCorner.Parent = floatBtn
+
+    local floatStroke = Instance.new("UIStroke")
+    floatStroke.Color = Color3.fromRGB(120, 200, 255)
+    floatStroke.Thickness = 1.5
+    floatStroke.Transparency = 0.3
+    floatStroke.Parent = floatBtn
+
+    -- ===== 懸浮按鈕：拖動 + 點擊 分離處理 =====
+    local fbDragging = false
+    local fbMoved = false
+    local fbDragStart = nil
+    local fbStartPos = nil
+    local DRAG_THRESHOLD = 4   -- 移動超過 4 像素就當成拖動，不再觸發點擊
+
+    floatBtn.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1
+           or input.UserInputType == Enum.UserInputType.Touch then
+            fbDragging = true
+            fbMoved = false
+            fbDragStart = input.Position
+            fbStartPos = floatBtn.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    fbDragging = false
+                end
+            end)
+        end
+    end)
+
+    floatBtn.InputChanged:Connect(function(input)
+        if not fbDragging then return end
+        if input.UserInputType == Enum.UserInputType.MouseMovement
+           or input.UserInputType == Enum.UserInputType.Touch then
+            local d = input.Position - fbDragStart
+            if math.abs(d.X) > DRAG_THRESHOLD or math.abs(d.Y) > DRAG_THRESHOLD then
+                fbMoved = true
+                floatBtn.Position = UDim2.new(
+                    fbStartPos.X.Scale, fbStartPos.X.Offset + d.X,
+                    fbStartPos.Y.Scale, fbStartPos.Y.Offset + d.Y
+                )
+            end
+        end
+    end)
+
+    -- 只有「冇拖動過」先算點擊
+    floatBtn.MouseButton1Click:Connect(function()
+        if fbMoved then
+            fbMoved = false
+            return
+        end
+        win.Visible = not win.Visible
+        if win.Visible then
+            win.Size = UDim2.fromOffset(0, 0)
+            TS:Create(win, TweenInfo.new(0.18, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+                Size = UDim2.fromOffset(400, 275)
+            }):Play()
+            toast("視窗已顯示")
+        end
+    end)
+
+    -- ===== 可拖動主視窗（標題欄拖動） =====
     local dragging, dragInput, dragStart, startPos
     titleBar.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -401,7 +478,6 @@ task.spawn(function()
         }},
     }
 
-    -- ===== 建立功能按鈕 =====
     local function clearPane(p, layout)
         for _, c in ipairs(p:GetChildren()) do
             if c ~= layout then c:Destroy() end
@@ -475,7 +551,6 @@ task.spawn(function()
         updateCanvas()
     end
 
-    -- ===== 建立類型按鈕 =====
     local catButtons = {}
     for i, cat in ipairs(categories) do
         local b = Instance.new("TextButton")
@@ -499,19 +574,10 @@ task.spawn(function()
     end
     leftPane.CanvasSize = UDim2.new(0, 0, 0, leftL.AbsoluteContentSize.Y + 4)
 
-    -- 預設選第一個
     if #catButtons > 0 then
         catButtons[1].BackgroundColor3 = Color3.fromRGB(78, 78, 80)
         buildFunctions(1)
     end
 
-    -- ===== 快捷鍵：右 Shift 顯示/隱藏 =====
-    UIS.InputBegan:Connect(function(input, gp)
-        if gp then return end
-        if input.KeyCode == Enum.KeyCode.RightShift then
-            win.Visible = not win.Visible
-        end
-    end)
-
-    toast("繁體中文介面已載入（右 Shift 隱藏 / 顯示）")
+    toast("繁體中文介面已載入（右下角懸浮按鈕切換顯示）")
 end)
